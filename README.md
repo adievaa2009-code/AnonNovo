@@ -1,86 +1,76 @@
-# Структура Telegram-бота на aiogram 3
+# Telegram-бот на aiogram 3 (анонимные чаты)
 
-```python
+Бот умеет находить собеседника по выбранной цели общения, пересылать сообщения между пользователями и распознавать голосовые/аудио/видео‑заметки (Vosk).
+
+```text
 ├── README.md
-├── bot
-│   ├── __init__.py
-│   ├── buttons
-│   │   ├── __init__.py
-│   │   ├── inline.py
-│   │   └── keyboard.py
-│   ├── config.py
-│   ├── handlers
-│   │   ├── __init__.py
-│   │   ├── callback.py
-│   │   ├── commands.py
-│   │   └── menu.py
-│   ├── message_text
-│   │   ├── __init__.py
-│   │   └── text.py
-│   └── misc
-│       ├── __init__.py
-│       └── states.py
-├── database
-│   ├── __init__.py
-│   ├── manager.py
-│   ├── models.py
-│   ├── queries
-│   │   └── users.py
-│   └── session.py
 ├── main.py
 ├── requirements.txt
-└── systemd
-    └── bot.service
-
+├── .env.example
+├── db.sqlite3
+├── downloads/
+├── systemd/
+│   └── bot.service
+├── bot/
+│   ├── config.py
+│   ├── buttons/
+│   │   ├── inline.py
+│   │   └── keyboard.py
+│   ├── handlers/
+│   │   ├── callback.py
+│   │   ├── commands.py
+│   │   └── menu.py
+│   ├── message_text/
+│   │   └── text.py
+│   └── misc/
+│       ├── ai.py
+│       ├── states.py
+│       └── vosk-model-small-ru-0.22/
+└── database/
+    ├── initdb.py
+    ├── manager.py
+    ├── models.py
+    ├── queries/
+    │   └── users.py
+    └── session.py
 ```
 
-## Запуск кода
-Выполните следующие шаги, чтобы настроить и запустить бота с помощью этого шаблона:
+## Запуск
 
-1. **Создайте новый репозиторий**
+1. **Подготовьте окружение**
 
-    Начните с создания нового репозитория, используя этот шаблон. Вы можете сделать это, нажав [здесь](https://github.com/rafailvv/telegram-bot-stucture).
+   ```
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
 
-2. **Настройка переменных среды**
+2. **Настройте переменные среды**
 
-    Информация в виде таблицы:
+   Скопируйте пример и заполните:
 
-    | Название переменной | Описание                                                 | Примерное значение                                      |
-    |--------------------|----------------------------------------------------------|----------------------------------------------------------|
-    | BOT_TOKEN          | Токен API бота Telegram.                                 | BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11 |
-    | ADMINS             | Список идентификаторов пользователей Telegram для администраторов бота. | ADMINS=12345678,910111213                                     |
-    | DB_NAME            | Название базы данных PostgreSQL.                         | DB_NAME=example_db_name                                  |
-    | DB_USER            | Имя пользователя для аутентификации в PostgreSQL.       | DB_USER=example_db_user                                  |
-    | DB_PASS            | Пароль для аутентификации в PostgreSQL.                 | DB_PASS=example_db_password                              |
-    | DB_HOST            | Имя хоста или IP-адрес сервера PostgreSQL.              | DB_HOST=example_db_host                                  |
-    | DB_PORT            | Номер порта для PostgreSQL (по умолчанию 5432).          | DB_PORT=5432                                             |
-    | REDIS_HOST         | Имя хоста или IP-адрес сервера Redis.                   | REDIS_HOST=localhost                                     |
+   ```
+   cp .env.example .env
+   ```
 
+   | Переменная  | Описание |
+   |------------|----------|
+   | BOT_TOKEN  | Токен Telegram‑бота |
+   | ADMINS     | ID админов, через запятую |
+   | API_TOKEN  | Токен для внешнего API (используется в `bot/config.py`) |
+   | TEAM_ID    | Идентификатор команды для внешнего API |
 
-3. **Запуск Бота**
+3. **Проверьте зависимости системы**
 
-    Клонируйте репозиторий
-    ```
-    git clone https://github.com/rafailvv/telegram-bot-stucture.git
-    ```
+   Для обработки видео‑заметок используется `ffmpeg`. Убедитесь, что он установлен и доступен в `PATH`.
 
-    Создайте файл переменных среды, скопировав предоставленный файл примера:
+4. **Запустите бота**
 
-    ```
-     cp .env.example .env
-     ```
+   ```
+   python main.py
+   ```
 
-    Установите требуемые пакеты
-    ```
-    pip install -r requirements.txt
-    ```
+## Примечания
 
-    Запустите Бота
-
-    ```
-    python3 main.py
-    ```
-
-## Благодарности
-
-Данный репозиторий разработан в рамках курса "Создание Telegram Бота" компании [INNOPROG](https://innoprog.ru/).
+- База данных SQLite создается автоматически в `db.sqlite3` при первом запуске.
+- Временные файлы для распознавания аудио сохраняются в `downloads/` и удаляются после обработки.
