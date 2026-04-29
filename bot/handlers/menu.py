@@ -8,6 +8,7 @@ from aiogram.types import Message, LabeledPrice, PreCheckoutQuery
 from pydub import AudioSegment
 
 from bot.misc.ai import recognizeaudio
+from bot.misc.safety import contains_stop_word
 from database.manager import changestatus, take1, getusinf
 from bot.message_text.text import WHAT_CAN_BOT_DO
 from bot.config import config, bot
@@ -17,11 +18,15 @@ menu_router = Router()
 import soundfile as sf
 
 
+@menu_router.message(F.text.in_({"Информация о боте", "Что умеет этот бот? 🤔"}))
+async def menu_handler(message: Message):
+    await message.answer(WHAT_CAN_BOT_DO, reply_markup=await search_kb())
+
 
 
 @menu_router.message(F.text == "Найти собеседника")
 async def menu_handler(message: Message):
-    await message.answer("Идет пoисk...", reply_markup=await stop_kb())
+    await message.answer("Выполняется поиск собеседника. Пожалуйста, ожидайте.", reply_markup=await stop_kb())
     await changestatus(1, message.chat.id)
 
     freep = await take1(message.chat.id)
@@ -36,20 +41,20 @@ async def menu_handler(message: Message):
     newapo = random.choice(freepsort).tg_id
 
     await message.answer(
-        "Пользователь найден, иди общайся", reply_markup=await stop_kb()
+        "Собеседник найден. Вы можете начать общение.", reply_markup=await stop_kb()
     )
     await changestatus(newapo, message.chat.id)
 
     await bot.send_message(
-        chat_id=newapo, text="Пользователь найден, иди общайся", reply_markup=await stop_kb()
+        chat_id=newapo, text="Собеседник найден. Вы можете начать общение.", reply_markup=await stop_kb()
     )
     await changestatus(message.chat.id, newapo)
 
 
-@menu_router.message(F.text == "ВЫЙТИ В МЕНЮ")
+@menu_router.message(F.text.in_({"Вернуться в меню", "ВЫЙТИ В МЕНЮ"}))
 async def menu_handler(message: Message):
     await message.answer(
-        "Вы в меню", reply_markup=await search_kb()
+        "Вы вернулись в главное меню.", reply_markup=await search_kb()
     )
     a=0
     GU =  (await getusinf(message.chat.id)).status
@@ -57,26 +62,26 @@ async def menu_handler(message: Message):
         await changestatus(a,GU)
         await bot.send_message(
             chat_id=GU,
-            text=" собесевашдник покинул чат :(",
+            text="Собеседник завершил диалог.",
             reply_markup=await search_kb()
         )
 
-        prices = [LabeledPrice(label='Узнать кто был собеседником', amount=1)]
+        prices = [LabeledPrice(label='Получить ссылку на собеседника', amount=1)]
         await bot.send_invoice(
             chat_id=GU,
-            title='Узнать кто был собеседником',
-            description='Деньги не возвращаем',
+            title='Получить ссылку на собеседника',
+            description='После оплаты будет предоставлена ссылка на профиль собеседника.',
             currency="XTR",
             provider_token="",
             prices=prices,
             start_parameter='stars-payment',
             payload=str(message.chat.id)
         )
-        prices = [LabeledPrice(label='Узнать кто был собеседником', amount=1)]
+        prices = [LabeledPrice(label='Получить ссылку на собеседника', amount=1)]
         await bot.send_invoice(
             chat_id=message.chat.id,
-            title='Узнать кто был собеседником',
-            description='Деньги не возвращаем',
+            title='Получить ссылку на собеседника',
+            description='После оплаты будет предоставлена ссылка на профиль собеседника.',
             currency="XTR",
             provider_token="",
             prices=prices,
@@ -97,7 +102,7 @@ async def process_successful_payment(message: Message) -> None:
     transaction_id = payment_info.telegram_payment_charge_id
     payload=payment_info.invoice_payload
     await message.answer(
-        text="Ссылка на собеседника: " + f'<a href="tg://user?id={payload}">перейти по ссылке</a>',
+        text="Ссылка на профиль собеседника: " + f'<a href="tg://user?id={payload}">открыть профиль</a>',
     parse_mode="HTML"
     )
 
@@ -106,6 +111,14 @@ async def process_successful_payment(message: Message) -> None:
 async def menu_handler(message: Message):
     GU= (await getusinf(message.chat.id)).status
     if GU!=0 and GU != 1:
+        message_text = message.text or message.caption
+        if contains_stop_word(message_text):
+            await message.answer(
+                "Сообщение не отправлено: оно содержит недопустимую лексику или небезопасное содержание.",
+                reply_markup=await stop_kb()
+            )
+            return
+
         try:
             await message.send_copy(chat_id=GU)
         except:
@@ -159,16 +172,25 @@ async def menu_handler(message: Message):
 
                 res = recognizeaudio(wav_path)
 
-                await bot.send_message(
-                    chat_id=GU, text=res )
-
-                # опционально: удалить временные файлы
                 async def cleanup():
                     for p in (src_path, wav_path):
                         try:
                             os.remove(p)
                         except OSError:
                             pass
+
+                if contains_stop_word(res):
+                    await message.answer(
+                        "Сообщение не отправлено: распознанный текст содержит недопустимую лексику или небезопасное содержание.",
+                        reply_markup=await stop_kb()
+                    )
+                    asyncio.create_task(cleanup())
+                    return
+
+                await bot.send_message(
+                    chat_id=GU, text=res )
+
+                # опционально: удалить временные файлы
                 asyncio.create_task(cleanup())
 
         # await bot.send_message(

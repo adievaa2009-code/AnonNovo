@@ -4,7 +4,7 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 async def start_kb():
     start_buttons = [
         [
-            KeyboardButton(text="Что умеет этот бот? 🤔")
+            KeyboardButton(text="Информация о боте")
         ]
     ]
 
@@ -26,7 +26,7 @@ async def search_kb():
 async def stop_kb():
     stop_buttons = [
         [
-            KeyboardButton(text="ВЫЙТИ В МЕНЮ")
+            KeyboardButton(text="Вернуться в меню")
         ]
     ]
 
