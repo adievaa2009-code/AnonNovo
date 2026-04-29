@@ -7,7 +7,6 @@ from aiogram import Router, F, Bot
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery
 from pydub import AudioSegment
 
-from bot.buttons.inline import choise
 from bot.misc.ai import recognizeaudio
 from database.manager import changestatus, take1, getusinf
 from bot.message_text.text import WHAT_CAN_BOT_DO
@@ -22,7 +21,29 @@ import soundfile as sf
 
 @menu_router.message(F.text == "Найти собеседника")
 async def menu_handler(message: Message):
-    await message.answer("C какой целью хотите пообщаться?", reply_markup=await choise())
+    await message.answer("Идет пoисk...", reply_markup=await stop_kb())
+    await changestatus(1, message.chat.id)
+
+    freep = await take1(message.chat.id)
+    freepsort = []
+    for per in freep:
+        if per.status == 1:
+            freepsort.append(per)
+
+    if freepsort == []:
+        return None
+
+    newapo = random.choice(freepsort).tg_id
+
+    await message.answer(
+        "Пользователь найден, иди общайся", reply_markup=await stop_kb()
+    )
+    await changestatus(newapo, message.chat.id)
+
+    await bot.send_message(
+        chat_id=newapo, text="Пользователь найден, иди общайся", reply_markup=await stop_kb()
+    )
+    await changestatus(message.chat.id, newapo)
 
 
 @menu_router.message(F.text == "ВЫЙТИ В МЕНЮ")
@@ -32,7 +53,7 @@ async def menu_handler(message: Message):
     )
     a=0
     GU =  (await getusinf(message.chat.id)).status
-    if GU!=0 and GU!=1 and GU!=2 and GU!=3:
+    if GU!=0 and GU!=1:
         await changestatus(a,GU)
         await bot.send_message(
             chat_id=GU,
@@ -156,5 +177,3 @@ async def menu_handler(message: Message):
         # )
 
         # Попробовать сделать пересылание фото
-
-

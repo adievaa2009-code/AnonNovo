@@ -20,7 +20,7 @@ logging.basicConfig(
 # dp = Dispatcher(storage=storage)
 dp = Dispatcher()
 
-dp.include_routers(commands_router, menu_router, callback_router)
+dp.include_routers(commands_router, menu_router)
 
 
 async def main():
