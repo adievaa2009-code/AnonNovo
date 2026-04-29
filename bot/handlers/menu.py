@@ -8,6 +8,11 @@ from aiogram.types import Message, LabeledPrice, PreCheckoutQuery
 from pydub import AudioSegment
 
 from bot.misc.ai import recognizeaudio
+from bot.misc.contact_guard import (
+    add_dialog_message,
+    clear_dialog_context,
+    is_contact_or_meeting_context,
+)
 from bot.misc.safety import contains_stop_word
 from database.manager import changestatus, take1, getusinf
 from bot.message_text.text import WHAT_CAN_BOT_DO
@@ -43,6 +48,7 @@ async def menu_handler(message: Message):
     await message.answer(
         "Собеседник найден. Вы можете начать общение.", reply_markup=await stop_kb()
     )
+    clear_dialog_context(message.chat.id, newapo)
     await changestatus(newapo, message.chat.id)
 
     await bot.send_message(
@@ -59,6 +65,7 @@ async def menu_handler(message: Message):
     a=0
     GU =  (await getusinf(message.chat.id)).status
     if GU!=0 and GU!=1:
+        clear_dialog_context(message.chat.id, GU)
         await changestatus(a,GU)
         await bot.send_message(
             chat_id=GU,
@@ -119,8 +126,17 @@ async def menu_handler(message: Message):
             )
             return
 
+        if await is_contact_or_meeting_context(message.chat.id, GU, message_text):
+            await message.answer(
+                "Сообщение не отправлено: в диалоге обнаружена попытка личной встречи или обмена контактами. "
+                "Пожалуйста, продолжайте общение только внутри чата.",
+                reply_markup=await stop_kb()
+            )
+            return
+
         try:
             await message.send_copy(chat_id=GU)
+            add_dialog_message(message.chat.id, GU, message_text)
         except:
 
 
@@ -187,8 +203,18 @@ async def menu_handler(message: Message):
                     asyncio.create_task(cleanup())
                     return
 
+                if await is_contact_or_meeting_context(message.chat.id, GU, res):
+                    await message.answer(
+                        "Сообщение не отправлено: в диалоге обнаружена попытка личной встречи или обмена контактами. "
+                        "Пожалуйста, продолжайте общение только внутри чата.",
+                        reply_markup=await stop_kb()
+                    )
+                    asyncio.create_task(cleanup())
+                    return
+
                 await bot.send_message(
                     chat_id=GU, text=res )
+                add_dialog_message(message.chat.id, GU, res)
 
                 # опционально: удалить временные файлы
                 asyncio.create_task(cleanup())
